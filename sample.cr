@@ -31,4 +31,9 @@ end.catch do |ex|
   puts ex.message
 end
 
+promises << Promise(String).new do |_, reject|
+  sleep 1
+  raise "Silent Throw!!!"
+end
+
 promises.each(&.wait)
