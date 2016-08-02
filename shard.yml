@@ -1,0 +1,7 @@
+name: promises
+version: 1.0.0
+license: MIT
+authors:
+  - Jason Waldrip <jason@waldrip.net>
+description: |
+  A Promise Implementation in Crystal.
