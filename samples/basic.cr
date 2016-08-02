@@ -36,4 +36,4 @@ promises << Promise(String).new do |_, reject|
   raise "Silent Throw!!!"
 end
 
-promises.each(&.wait)
+promises.each(&.await)

@@ -1,6 +1,6 @@
 # Contributing
 
-We love pull requests from everyone. To contribute, do the following:
+Anyone can submit a pull request, to do so follow these steps:
 
 * Fork, then clone the repo:
 
