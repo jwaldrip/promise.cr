@@ -18,19 +18,34 @@ dependencies:
 ```crystal
 require "promise"
 require "http/client"
+require "json"
 
-request = Promise.new do |resolve|
-  HTTP::Client.get "https://httpbin.org/user-agent" do |response|
-    raise "request error" unless response.status_code < 400
-    resolve.call(response)
-  end
+def read_body(response : HTTP::Client::Response) : String
+  response.body
 end
 
-puts "do something else..."
+request = Promise(HTTP::Client::Response | JSON::Any).new do |resolve|
+  resolve.call(HTTP::Client.get "https://httpbin.org/user-agent")
+end
+
+puts "do something else...."
 
 request.then do |response|
-  puts JSON.parse(respone.json)
+  JSON.parse(read_body(response as HTTP::Client::Response))
 end.catch do |ex|
-  puts "Error: #{ex.message}"
-end
+  puts "caught!"
+  puts ex.message
+end.then do |json_hash|
+  puts json_hash
+end.wait
 ```
+
+## Documentation
+
+You can generate docs using `crystal doc` on your local machine,
+or visit: https://jwaldrip.github.com/promise-cr to view the current version's
+documentation.
+
+## Contributing
+
+See [CONTRIBUTING](/CONTRIBUTING.md)
