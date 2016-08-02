@@ -1,62 +1,82 @@
 class Promise(T)
   class HaltException < Exception ; end
 
+  @catch : Promise(T | Nil) | Nil
+  @then : Promise(T | Nil) | Nil
+
   def initialize(&block : (T -> Nil) -> _)
     initialize do |resolve, _|
       block.call(resolve)
     end
   end
 
-  def initialize(&block : (T -> Nil), (String -> Nil) -> _)
+  private def resolve(value : T)
+    @rejection.close
+    @resolution.send(value)
+    @waiter.send(true)
+    nil
+  end
+
+  private def reject(message : String)
+    reject(Exception.new message)
+  end
+
+  private def reject(ex : Exception)
+    @resolution.close
+    @rejection.send(ex)
+    @waiter.send(true)
+    nil
+  end
+
+  def initialize(&block : (T -> Nil), (String | Exception -> Nil) -> _)
     @resolution = Channel::Buffered(T).new(1)
     @rejection  = Channel::Buffered(Exception).new(1)
     @waiter     = Channel::Buffered(Bool).new(1)
-    resolve = ->(value : T) {
-      @rejection.close
-      @resolution.send(value)
-      @waiter.send(true)
-      nil
-    }
-    reject = ->(err : Exception) {
-      @resolution.close
-      @rejection.send(err)
-      @waiter.send(true)
-      nil
-    }
+    _resolve = ->(value : T){ resolve(value) }
+    _reject = ->(ex : String | Exception){ reject(ex) }
     spawn do
       begin
-        block.call(resolve, ->(message : String){ reject.call(Exception.new(message)) })
+        block.call(_resolve, _reject)
       rescue ex : Exception
-        reject.call(ex)
+        _reject.call(ex)
       end
     end
   end
 
   def then(&block)
-    Promise(T | Nil).new do |resolve|
-      @resolution.receive
-      resolve.call(block.call)
+    @then ||= Promise(T | Nil).new do |resolve, reject|
+      begin
+        get_resolution
+        resolve.call(block.call)
+      rescue hex : HaltException
+        self.catch { |ex| reject.call(ex) }
+      end
     end
   end
 
   def then(&block : T -> _)
-    Promise(T | Nil).new do |resolve|
+    @then ||= Promise(T | Nil).new do |resolve, reject|
       begin
+        self.catch { |ex| reject.call(ex) }
         resolve.call(block.call(get_resolution))
-      rescue ex : HaltException
-        nil
+      rescue hex : HaltException
+        self.catch { |ex| reject.call(ex) }
       end
     end
   end
 
   def catch(&block : Exception -> _)
-    Promise(T | Nil).new do |resolve|
+    @catch ||= Promise(T | Nil).new do |resolve|
       begin
         resolve.call(block.call(get_rejection))
-      rescue ex : HaltException
+      rescue hex : HaltException
         self.then { |result| resolve.call(result) }
       end
     end
+  end
+
+  def wait
+    @waiter.receive
   end
 
   private def get_resolution
@@ -73,10 +93,6 @@ class Promise(T)
     rescue ex : Channel::ClosedError
       raise HaltException.new(message: ex.message, cause: ex)
     end
-  end
-
-  def wait
-    @waiter.receive
   end
 
 end
