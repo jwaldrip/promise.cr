@@ -16,7 +16,6 @@ class Promise(T)
   def initialize(&block : (T -> Nil), (String | Exception -> Nil) -> _)
     @resolution = Channel::Buffered(T).new(1)
     @rejection  = Channel::Buffered(Exception).new(1)
-    @waiter     = Channel::Buffered(Bool).new(1)
     _resolve = ->(value : T){ resolve(value) }
     _reject = ->(ex : String | Exception){ reject(ex) }
     spawn do
@@ -68,13 +67,18 @@ class Promise(T)
   end
 
   # Will block until the chain before the specified **wait** has finished it's
-  # operations.
+  # operations, then returns the last value.
   #
   # **NOTE:** This is typically used to prevent the application from terminating
   # before the operations are complete, this may not be required if you have
   # something else handling the process.
-  def wait
-    @waiter.receive
+  def await
+    waiter = Channel::Buffered(T | Nil).new
+    self.then do |result|
+      waiter.send(result)
+      nil
+    end
+    waiter.receive
   end
 
   private def get_resolution
@@ -96,7 +100,6 @@ class Promise(T)
   private def resolve(value : T)
     @rejection.close
     @resolution.send(value)
-    @waiter.send(true)
     nil
   end
 
@@ -107,7 +110,6 @@ class Promise(T)
   private def reject(ex : Exception)
     @resolution.close
     @rejection.send(ex)
-    @waiter.send(true)
     nil
   end
 
