@@ -10,7 +10,7 @@ Add `promise` to the shard.yml file as a dependency.
 dependencies:
   promise:
     github: jwaldrip/promise-cr
-    tag: 1.0.0
+    tag: {desired_tag}
 ```
 
 ## Usage

@@ -10,7 +10,9 @@ class Promise(T)
     end
   end
 
-  # Creates a new Promise with a resolve and a reject
+  # Creates a new Promise with procs for how to resolve and how to reject the promise.
+  #
+  # **NOTE**: Raised exceptions will also trigger a reject.
   def initialize(&block : (T -> Nil), (String | Exception -> Nil) -> _)
     @resolution = Channel::Buffered(T).new(1)
     @rejection  = Channel::Buffered(Exception).new(1)
@@ -26,6 +28,7 @@ class Promise(T)
     end
   end
 
+  # Specifies an operation to complete after the previous operation has been resolved.
   def then(&block)
     @then ||= Promise(T | Nil).new do |resolve, reject|
       begin
@@ -37,6 +40,7 @@ class Promise(T)
     end
   end
 
+  # Specifies an operation to complete after the previous operation has been resolved.
   def then(&block : T -> _)
     @then ||= Promise(T | Nil).new do |resolve, reject|
       begin
@@ -48,6 +52,11 @@ class Promise(T)
     end
   end
 
+  # Specifies an operation to complete after the previous operation has been
+  # rejected.
+  #
+  # **NOTE:** Using a catch will allow the continuation of the chain after
+  # the catch.
   def catch(&block : Exception -> _)
     @catch ||= Promise(T | Nil).new do |resolve|
       begin
@@ -58,6 +67,12 @@ class Promise(T)
     end
   end
 
+  # Will block until the chain before the specified **wait** has finished it's
+  # operations.
+  #
+  # **NOTE:** This is typically used to prevent the application from terminating
+  # before the operations are complete, this may not be required if you have
+  # something else handling the process.
   def wait
     @waiter.receive
   end
