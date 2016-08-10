@@ -3,6 +3,48 @@ class Promise(T)
 
   @catch : Promise(T | Nil) | Nil
   @then : Promise(T | Nil) | Nil
+  @resolution_value : T | Nil
+  @rejection_value : Exception | Nil
+
+  # The `Promise(T).all(Array(Promise(T | Nil))` method returns a promise that
+  # resolves when all of the promises in the iterable argument have resolved, or
+  # rejects with the reason of the first passed promise that rejects.
+  def self.all(promises : Array(Promise(T | Nil)))
+    Promise(Array(T | Nil)).new do |resolve, reject|
+      ch = Channel::Buffered(T | Nil).new(promises.size)
+      promises.each do |promise|
+        promise.then do |result|
+          ch.send result
+        end.catch do |ex|
+          reject.call(ex)
+        end
+      end
+      resolve.call(promises.map { ch.receive }.to_a)
+    end
+  end
+
+  # The Promise(T).execute(&block) method returns a Promise object that is resolved
+  # by the return value of the block.
+  def self.execute(&block : -> T)
+    new(&.call(block.call))
+  end
+
+  # The `Promise.race(Array(Promise(T | Nil))` method returns a `Promise` that
+  # is settled the same way as the first passed promise to settle. It resolves
+  # or rejects, whichever happens first.
+  def self.race(promises : Array(Promise(T | Nil)))
+    Promise(T | Nil).new do |resolve, reject|
+      ch = Channel::Buffered(T | Nil).new(promises.size)
+      promises.each do |promise|
+        promise.then do |result|
+          ch.send result
+        end.catch do |ex|
+          reject.call(ex)
+        end
+      end
+      resolve.call(ch.receive)
+    end
+  end
 
   # The Promise(T).reject(reason) method returns a Promise object that is rejected
   # with the given reason.
@@ -13,51 +55,13 @@ class Promise(T)
   # The Promise(T).reject(reason) method returns a Promise object that is
   # rejected with the given reason.
   def self.reject(ex : Exception)
-    new do |_, reject|
-      reject.call ex
-    end
+    execute { raise ex }
   end
 
   # The Promise(T).resolve(T) method returns a Promise.then object that is
   # resolved with the given value.
   def self.resolve(value : T)
-    new do |resolve|
-      resolve.call value
-    end
-  end
-
-  # The `Promise(T).all(Array(Promise(T | Nil))` method returns a promise that
-  # resolves when all of the promises in the iterable argument have resolved, or
-  # rejects with the reason of the first passed promise that rejects.
-  def self.all(promises : Array(Promise(T | Nil)))
-    Promise(Array(T | Nil)).new do |resolve, reject|
-      ch = Channel::Buffered(T | Nil).new(promises.length)
-      promises.each do |promise|
-        promise.then do |result|
-          ch.send result
-        end.catch do |ex|
-          reject.call(ex)
-        end
-      end
-      resolve.call(promises.map { ch.receive })
-    end
-  end
-
-  # The `Promise.race(Array(Promise(T | Nil))` method returns a `Promise` that
-  # is settled the same way as the first passed promise to settle. It resolves
-  # or rejects, whichever happens first.
-  def self.race(promises : Array(Promise(T | Nil)))
-    new do |resolve, reject|
-      ch = Channel::Buffered(T | Nil).new(promises.length)
-      promises.each do |promise|
-        promise.then do |result|
-          ch.send result
-        end.catch do |ex|
-          reject.call(ex)
-        end
-      end
-      resolve.call(ch.receive)
-    end
+    execute { value }
   end
 
   def initialize(&block : (T -> Nil) -> _)
@@ -84,11 +88,12 @@ class Promise(T)
   end
 
   # Specifies an operation to complete after the previous operation has been resolved.
-  def then(&block)
+  def then(&block : -> _)
     @then ||= Promise(T | Nil).new do |resolve, reject|
       begin
         get_resolution
-        resolve.call(block.call)
+        value = block.call
+        resolve.call value.is_a?(T) ? value : nil
       rescue hex : HaltException
         self.catch { |ex| reject.call(ex) }
       end
@@ -99,8 +104,8 @@ class Promise(T)
   def then(&block : T -> _)
     @then ||= Promise(T | Nil).new do |resolve, reject|
       begin
-        self.catch { |ex| reject.call(ex) }
-        resolve.call(block.call(get_resolution))
+        value = block.call(get_resolution)
+        resolve.call value.is_a?(T) ? value : nil
       rescue hex : HaltException
         self.catch { |ex| reject.call(ex) }
       end
@@ -115,7 +120,24 @@ class Promise(T)
   def catch(&block : Exception -> _)
     @catch ||= Promise(T | Nil).new do |resolve|
       begin
-        resolve.call(block.call(get_rejection))
+        value = block.call(get_rejection)
+        resolve.call value.is_a?(T) ? value : nil
+      rescue hex : HaltException
+        self.then { |result| resolve.call(result) }
+      end
+    end
+  end
+
+  # Specifies an operation to complete after the previous operation has been
+  # rejected.
+  #
+  # **NOTE:** Using a catch will allow the continuation of the chain after
+  # the catch.
+  def catch(&block : Exception -> _)
+    @catch ||= Promise(T | Nil).new do |resolve|
+      begin
+        value = block.call(get_rejection)
+        resolve.call value.is_a?(T) ? value : nil
       rescue hex : HaltException
         self.then { |result| resolve.call(result) }
       end
@@ -133,12 +155,37 @@ class Promise(T)
     self.then do |result|
       waiter.send(result)
       nil
+    end.catch do |ex|
+      waiter.send nil
     end
     waiter.receive
   end
 
+  def state
+    case
+    when resolved?
+      :resolved
+    when rejected?
+      :rejected
+    when pending?
+      :pending
+    end
+  end
+
+  def pending?
+    !resolved? && !rejected?
+  end
+
+  def rejected?
+    !@rejection_value.nil?
+  end
+
+  def resolved?
+    !@resolution_value.nil?
+  end
+
   private def get_resolution
-    begin
+    @resolution_value ||= begin
       @resolution.receive
     rescue ex : Channel::ClosedError
       raise HaltException.new(message: ex.message, cause: ex)
@@ -146,7 +193,7 @@ class Promise(T)
   end
 
   private def get_rejection
-    begin
+    @rejection_value ||= begin
       @rejection.receive
     rescue ex : Channel::ClosedError
       raise HaltException.new(message: ex.message, cause: ex)

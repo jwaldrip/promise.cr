@@ -1,5 +1,5 @@
-name: promises
-version: 0.9.0
+name: promise
+version: 1.0.0
 license: MIT
 authors:
   - Jason Waldrip <jason@waldrip.net>

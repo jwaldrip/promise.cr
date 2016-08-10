@@ -2,3 +2,5 @@
 /samples/http-sample
 /samples/basic
 /doc/*
+/.shards
+/libs
