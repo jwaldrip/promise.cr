@@ -1,4 +1,4 @@
-# Crystal Promise
+# Crystal Promise [![Build Status](https://travis-ci.org/jwaldrip/promise-cr.svg?branch=master)](https://travis-ci.org/jwaldrip/promise-cr)
 A Promise Implementation in Crystal.
 
 ## Installation
