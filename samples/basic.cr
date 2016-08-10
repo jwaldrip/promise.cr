@@ -2,9 +2,9 @@ require "../src/promise"
 
 promises = [] of Promise(String | Nil)
 10.times do |i|
-  promises << Promise(String).new do |resolve|
+  promises << Promise(String).execute do
     sleep 1
-    resolve.call("finished ##{i + 1}")
+    "finished ##{i + 1}"
   end.then do |result|
     puts result
     "after catch: #{result}"

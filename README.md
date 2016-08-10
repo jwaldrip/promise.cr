@@ -24,8 +24,8 @@ def read_body(response : HTTP::Client::Response) : String
   response.body
 end
 
-request = Promise(HTTP::Client::Response | JSON::Any).new do |resolve|
-  resolve.call(HTTP::Client.get "https://httpbin.org/user-agent")
+request = Promise(HTTP::Client::Response | JSON::Any).execute do |resolve|
+  HTTP::Client.get "https://httpbin.org/user-agent"
 end
 
 puts "do something else...."
