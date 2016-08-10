@@ -6,7 +6,7 @@ class Promise(T)
   @resolution_value : T | Nil
   @rejection_value : Exception | Nil
 
-  # The `Promise(T).all(Array(Promise(T | Nil))` method returns a promise that
+  # The `Promise(T).all(promises : Array(Promise(T | Nil))` method returns a promise that
   # resolves when all of the promises in the iterable argument have resolved, or
   # rejects with the reason of the first passed promise that rejects.
   def self.all(promises : Array(Promise(T | Nil)))
@@ -23,13 +23,13 @@ class Promise(T)
     end
   end
 
-  # The Promise(T).execute(&block) method returns a Promise object that is resolved
+  # The `Promise(T).execute(&block : -> T)` method returns a Promise object that is resolved
   # by the return value of the block.
   def self.execute(&block : -> T)
     new(&.call(block.call))
   end
 
-  # The `Promise.race(Array(Promise(T | Nil))` method returns a `Promise` that
+  # The `Promise.race(promises : Array(Promise(T | Nil))` method returns a `Promise` that
   # is settled the same way as the first passed promise to settle. It resolves
   # or rejects, whichever happens first.
   def self.race(promises : Array(Promise(T | Nil)))
@@ -46,31 +46,38 @@ class Promise(T)
     end
   end
 
-  # The Promise(T).reject(reason) method returns a Promise object that is rejected
+  # The `Promise(T).reject(message : String)` method returns a Promise object that is rejected
   # with the given reason.
+  #
+  # Rejects with a string message
   def self.reject(message : String)
     reject Exception.new message
   end
 
-  # The Promise(T).reject(reason) method returns a Promise object that is
+  # The `Promise(T).reject(ex : Exception)` method returns a Promise object that is
   # rejected with the given reason.
+  #
+  # Rejects with an exception.
   def self.reject(ex : Exception)
     execute { raise ex }
   end
 
-  # The Promise(T).resolve(T) method returns a Promise.then object that is
+  # The `Promise(T).resolve(value : T)` method returns a Promise.then object that is
   # resolved with the given value.
   def self.resolve(value : T)
     execute { value }
   end
 
+  # The `Promise(T).new(&block : (T -> Nil))` method Creates a new Promise with a proc for how to resolve the promise.
+  #
+  # **NOTE**: Raised exceptions will also trigger a reject.
   def initialize(&block : (T -> Nil) -> _)
     initialize do |resolve, _|
       block.call(resolve)
     end
   end
 
-  # Creates a new Promise with procs for how to resolve and how to reject the promise.
+  # The `Promise(T).new(&block : (T -> Nil), (String | Exception -> Nil) -> _)` method Creates a new Promise with procs for how to resolve and how to reject the promise.
   #
   # **NOTE**: Raised exceptions will also trigger a reject.
   def initialize(&block : (T -> Nil), (String | Exception -> Nil) -> _)
@@ -87,7 +94,7 @@ class Promise(T)
     end
   end
 
-  # Specifies an operation to complete after the previous operation has been resolved.
+  # The `then(&)` method specifies an operation to complete after the previous operation has been resolved.
   def then(&block : -> _)
     @then ||= Promise(T | Nil).new do |resolve, reject|
       begin
@@ -100,7 +107,7 @@ class Promise(T)
     end
   end
 
-  # Specifies an operation to complete after the previous operation has been resolved.
+  # The `then(&block : T -> _)` method Specifies an operation to complete after the previous operation has been resolved.
   def then(&block : T -> _)
     @then ||= Promise(T | Nil).new do |resolve, reject|
       begin
@@ -112,7 +119,7 @@ class Promise(T)
     end
   end
 
-  # Specifies an operation to complete after the previous operation has been
+  # The `catch(&block : Exception -> _)` method specifies an operation to complete after the previous operation has been
   # rejected.
   #
   # **NOTE:** Using a catch will allow the continuation of the chain after
@@ -128,23 +135,7 @@ class Promise(T)
     end
   end
 
-  # Specifies an operation to complete after the previous operation has been
-  # rejected.
-  #
-  # **NOTE:** Using a catch will allow the continuation of the chain after
-  # the catch.
-  def catch(&block : Exception -> _)
-    @catch ||= Promise(T | Nil).new do |resolve|
-      begin
-        value = block.call(get_rejection)
-        resolve.call value.is_a?(T) ? value : nil
-      rescue hex : HaltException
-        self.then { |result| resolve.call(result) }
-      end
-    end
-  end
-
-  # Will block until the chain before the specified **wait** has finished it's
+  # The `await` method will block until the chain before the specified **wait** has finished it's
   # operations, then returns the last value.
   #
   # **NOTE:** This is typically used to prevent the application from terminating
@@ -161,6 +152,7 @@ class Promise(T)
     waiter.receive
   end
 
+  # The `state` method will return the current state of the `Promise`.
   def state
     case
     when resolved?
@@ -172,14 +164,17 @@ class Promise(T)
     end
   end
 
+  # The `pending?` method will return true if the `Promise` is pending.
   def pending?
     !resolved? && !rejected?
   end
 
+  # The `rejected?` method will return true if the `Promise` is rejected.
   def rejected?
     !@rejection_value.nil?
   end
 
+  # The `resolved?` method will return true if the `Promise` is resolved.
   def resolved?
     !@resolution_value.nil?
   end
