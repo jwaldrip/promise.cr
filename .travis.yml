@@ -1,7 +1,7 @@
 language: crystal
 crystal:
-  - 0.18.7
-  - 0.19.1
+  - latest
+  - nightly
 script:
   - crystal spec
   - for f in `ls -1 ./samples` ; do crystal run ./samples/$f ; done
