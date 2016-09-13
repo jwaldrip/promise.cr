@@ -12,7 +12,7 @@ describe Promise do
       end.await
       value.should be_nil
       exception.should be_a Exception
-      (exception as Exception).message.should eq "reason"
+      exception.as(Exception).message.should eq "reason"
     end
   end
 
@@ -27,7 +27,7 @@ describe Promise do
       end.await
       value.should be_nil
       exception.should be_a Exception
-      (exception as Exception).message.should eq "reason"
+      exception.as(Exception).message.should eq "reason"
     end
   end
 
@@ -41,7 +41,7 @@ describe Promise do
         exception = ex
       end.await
       exception.should be_nil
-      (value as String).should eq "value"
+      value.as(String).should eq "value"
     end
   end
 
@@ -52,7 +52,7 @@ describe Promise do
         values = [] of String
         promises = 10.times.map do |i|
           Promise(String | Int32).resolve(i).then do |i|
-            sleep (i as Int32) / 10
+            sleep i.as(Int32) / 10
             "value #{i}"
           end
         end.to_a
@@ -74,8 +74,8 @@ describe Promise do
         values = [] of String
         promises = 10.times.map do |i|
           Promise(String | Int32).resolve(i).then do |i|
-            sleep (i as Int32) / 10
-            raise "Oops" if (i as Int32) > 4
+            sleep i.as(Int32) / 10
+            raise "Oops" if i.as(Int32) > 4
             "value #{i}"
           end
         end.to_a
@@ -86,7 +86,7 @@ describe Promise do
         end.await
         exception.should be_a Exception
         values.size.should eq 0
-        (exception as Exception).message.should eq "Oops"
+        exception.as(Exception).message.should eq "Oops"
       end
     end
   end
@@ -98,8 +98,8 @@ describe Promise do
         first_value = nil
         promises = 10.times.map do |i|
           Promise(String | Int32).resolve(i).then do |i|
-            sleep (i as Int32) / 10
-            raise "Oops" if (i as Int32) > 4
+            sleep i.as(Int32) / 10
+            raise "Oops" if i.as(Int32) > 4
             "value #{i}"
           end
         end.to_a
@@ -119,8 +119,8 @@ describe Promise do
         first_value = nil
         promises = 10.times.map do |i|
           Promise(String | Int32).resolve(i).then do |i|
-            sleep (i as Int32) / 10
-            raise "Oops" if (i as Int32) < 4
+            sleep i.as(Int32) / 10
+            raise "Oops" if i.as(Int32) < 4
             "value #{i}"
           end
         end.to_a
@@ -131,7 +131,7 @@ describe Promise do
         end.await
         exception.should be_a Exception
         first_value.should be_nil
-        (exception as Exception).message.should eq "Oops"
+        exception.as(Exception).message.should eq "Oops"
       end
     end
   end
@@ -152,7 +152,7 @@ describe Promise do
           exception = ex
         end.await
         exception.should be_a Exception
-        (exception as Exception).message.should eq "oops"
+        exception.as(Exception).message.should eq "oops"
       end
     end
   end
@@ -162,7 +162,7 @@ describe Promise do
       value = nil
       Promise(String).new do |resolve|
         value = "hello"
-        resolve.call(value as String)
+        resolve.call value.as(String)
       end.await
       value.should eq "hello"
     end
@@ -176,7 +176,7 @@ describe Promise do
           exception = ex
         end.await
         exception.should be_a Exception
-        (exception as Exception).message.should eq "Oops"
+        exception.as(Exception).message.should eq "Oops"
       end
     end
   end
