@@ -1,4 +1,4 @@
-# Crystal Promise [![Build Status](https://travis-ci.org/jwaldrip/promise-cr.svg?branch=master)](https://travis-ci.org/jwaldrip/promise-cr) [![GitHub release](https://img.shields.io/github/release/jwaldrip/promise-cr.svg)](https://github.com/jwaldrip/promise-cr/releases) [![Crystal Docs](https://img.shields.io/badge/Crystal-Docs-8A2BE2.svg)](https://jwaldrip.github.com/promise-cr)
+# Promise.cr [![Build Status](https://travis-ci.org/jwaldrip/promise-cr.svg?branch=master)](https://travis-ci.org/jwaldrip/promise.cr) [![GitHub release](https://img.shields.io/github/release/jwaldrip/promise-cr.svg)](https://github.com/jwaldrip/promise.cr/releases) [![Crystal Docs](https://img.shields.io/badge/Crystal-Docs-8A2BE2.svg)](https://jwaldrip.github.com/promise.cr)
 A Promise Implementation in Crystal.
 
 ## Installation
@@ -9,7 +9,7 @@ Add `promise` to the shard.yml file as a dependency.
 # shard.yml
 dependencies:
   promise:
-    github: jwaldrip/promise-cr
+    github: jwaldrip/promise.cr
     tag: {desired_tag}
 ```
 
