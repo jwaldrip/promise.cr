@@ -37,7 +37,7 @@ end.catch do |ex|
   puts ex.message
 end.then do |json_hash|
   puts json_hash
-end.wait
+end.await
 ```
 
 ## Documentation
