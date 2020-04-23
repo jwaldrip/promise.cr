@@ -11,7 +11,7 @@ class Promise(T)
   # rejects with the reason of the first passed promise that rejects.
   def self.all(promises : Array(Promise(T | Nil)))
     Promise(Array(T | Nil)).new do |resolve, reject|
-      ch = Channel::Buffered(T | Nil).new(promises.size)
+      ch = Channel(T | Nil).new(promises.size)
       promises.each do |promise|
         promise.then do |result|
           ch.send result
@@ -34,7 +34,7 @@ class Promise(T)
   # or rejects, whichever happens first.
   def self.race(promises : Array(Promise(T | Nil)))
     Promise(T | Nil).new do |resolve, reject|
-      ch = Channel::Buffered(T | Nil).new(promises.size)
+      ch = Channel(T | Nil).new(promises.size)
       promises.each do |promise|
         promise.then do |result|
           ch.send result
@@ -81,8 +81,8 @@ class Promise(T)
   #
   # **NOTE**: Raised exceptions will also trigger a reject.
   def initialize(&block : (T -> Nil), (String | Exception -> Nil) -> _)
-    @resolution = Channel::Buffered(T).new(1)
-    @rejection  = Channel::Buffered(Exception).new(1)
+    @resolution = Channel(T).new(1)
+    @rejection  = Channel(Exception).new(1)
     _resolve = ->(value : T){ resolve(value) }
     _reject = ->(ex : String | Exception){ reject(ex) }
     spawn do
@@ -142,7 +142,7 @@ class Promise(T)
   # before the operations are complete, this may not be required if you have
   # something else handling the process.
   def await
-    waiter = Channel::Buffered(T | Nil).new
+    waiter = Channel(T | Nil).new
     self.then do |result|
       waiter.send(result)
       nil
